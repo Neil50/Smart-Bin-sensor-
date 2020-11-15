@@ -1,7 +1,8 @@
 
 
 long microsecondsToCentimeters(long microseconds) {
-   return microseconds / 29 / 2;
+   return microseconds *340/20000*2;
+   
 }
 
 long measureDistance(int pingPin, int echoPin){
@@ -10,7 +11,7 @@ long measureDistance(int pingPin, int echoPin){
 
    pinMode(pingPin, OUTPUT);
    pinMode(echoPin, INPUT);
-   for(int i = 0; i < 2; i++){
+   for(int i = 0; i < 3; i++){
      digitalWrite(pingPin, LOW);
      delayMicroseconds(2);
      digitalWrite(pingPin, HIGH);
@@ -21,7 +22,7 @@ long measureDistance(int pingPin, int echoPin){
      delay(100);
    }
 
-   Serial.print(length/3);
-   Serial.println();
-   return length/3;
+   //Serial.print(length/4);
+  
+   return length/6;
 }

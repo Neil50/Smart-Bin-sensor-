@@ -27,21 +27,27 @@ WidgetLED red(V3);
 WidgetLED fireled(V4);
 
 char displaybat = V10;
+char displaytrash = V11;
+char resettime = V9;
 
+char lengthbin = V12;
+long previoustime = 10000;
+long defaulttime = 10000;
+long currTime = 10000;
 
 // There must be one global SimpleTimer object.
 SimpleTimer timer;
+int timerid;
 const int pingPin = 5; // Trigger Pin of Ultrasonic Sensor
 const int echoPin = 6; // Echo Pin of Ultrasonic Sensor
 
-const int led0 = 7; // Led
-const int led1 = 8;
+const int redled = 7; // Led
+const int orangeled = 8;
 
-const int led2 = 9;
+const int greenled = 9;
 const int buzzer = 3;
-const int switch1 = 12;
+const int resetswitch = 12;
 const int transwitch = 10;
-
 
 
 int buttonState = 0;  
@@ -51,75 +57,76 @@ int buttonState = 0;
 // Analog in
 const int CarbonPin = 5;
 const int BatteryPin = 4;
-
-
-long high = 80;
-long medium = 50;
-long low = 10;
-int total = 100;
-
+const int temp = 3;
 
 int hour = 0;
+long total = 100;
 int sensorValue;
 
 void repeatHour(){
   //wifi_setup();
-  long percentage = 0;
-  digitalWrite(led0,LOW);
-  digitalWrite(led1,LOW);
-  digitalWrite(led2,LOW);
+  float percentage = 0;
+  digitalWrite(redled,LOW);
+  digitalWrite(orangeled,LOW);
+  digitalWrite(greenled,LOW);
   green.off();
   orange.off();
   red.off();
- 
-  //Need to calibrate measurements 
-  //for ( int i = 0; i < 2; i++){
-  //  percentage = percentage + measureDistance(pingPin, echoPin);
-  //  
-  //}
-  //percentage = percentage/(total*2);
-  percentage = measureDistance(pingPin, echoPin)/total;
-
-  if(percentage >= 0.8){
-    =
-    digitalWrite(led0,HIGH);
-    green.on();
+  
+  long x = measureDistance(pingPin, echoPin);
+  percentage = (float)x/total*100;
+  percentage = 100 - percentage;
+ // Serial.println(x,DEC);
+  //Serial.println(percentage,DEC);
+  
+  if(percentage >= 80){
+    digitalWrite(redled,HIGH);
+    red.on();
+   
     delay(10000);
- 
-  }else if( 0.5 < percentage & percentage < 0.75){
-    digitalWrite(led1,HIGH);
-  ;
+  }else if( 50 < percentage && percentage < 80){
+    digitalWrite(orangeled,HIGH);
     orange.on();
     delay(10000);
-  
-  }else{
-    digitalWrite(led2,HIGH);  
-  
-    red.on();
+  }else if (percentage <= 50){
+    digitalWrite(greenled,HIGH);  
+    green.on();
     delay(10000);
   }
-  
-  
+  Serial.println("read");
+  if(percentage < 0) percentage = 0;
+  Blynk.virtualWrite(displaytrash,percentage);
   hour++;
-  if(hour == 24){
+  if(hour == 1){
     hour = 0;
+    Serial.println("ON");
+    digitalWrite(transwitch ,HIGH);
+    delay(2000);
     long level = batteryMonitoring(BatteryPin);
-    Blynk.virtualWrite(displaybat,level);
     
+    Serial.println("OFF");
+    digitalWrite(transwitch,LOW);
+    delay(1000);
+    Blynk.virtualWrite(displaybat,level);
   }
   // battery monitoring and wifi
 }
 
+
 void setup() {
     Serial.begin(9600); // Starting Serial Terminal
-    pinMode(led0,OUTPUT);
-    pinMode(led1,OUTPUT);
-    pinMode(led2,OUTPUT);
-    pinMode(switch1, INPUT);
+    pinMode(redled,OUTPUT);
+    pinMode(orangeled,OUTPUT);
+    pinMode(greenled,OUTPUT);
+    pinMode(resetswitch, INPUT);
+    pinMode(transwitch, INPUT);
     pinMode(buzzer,OUTPUT); 
-    // need to fix simple timer 
-    //timer.setInterval(1, repeatHour);
+    Serial.print("set");
+    pinMode(LED_BUILTIN, OUTPUT);
+    timerid = timer.setInterval(defaulttime, repeatHour);
     wifi_setup();
+    Blynk.virtualWrite(lengthbin,100);
+   
 
 }
 
@@ -131,32 +138,66 @@ void wifi_setup(){
 
 // looping
 void loop(){
-    //repeatHour();
+   
+    //Blynk.run();
+    //timer.run();
+    digitalWrite(LED_BUILTIN, HIGH);  
+    green.off();
+    red.off();
+    orange.off();
+    digitalWrite(transwitch ,HIGH); 
+    Serial.println(  batteryMonitoring(BatteryPin));
+    Blynk.virtualWrite(V5, batteryMonitoring(BatteryPin) );
+    
+
+    //delay(5);
+   
+    //batteryMonitoring(BatteryPin));  
+   
+    measureDistance(pingPin, echoPin);  
+
     if (fireDetection(CarbonPin)){
-      tone(buzzer,1000);
+      tone(buzzer,4000);
       fireled.on();
       delay(2000);    
     }else{
       noTone(buzzer);
       fireled.off();
     }
-   //Serial.print(buttonState);
-   Serial.print(measureDistance(pingPin, echoPin));
-    buttonState = digitalRead(switch1);
-    //Serial.print(buttonState);
+  
+    
+    if(currTime != previoustime){
+        timer.deleteTimer(timerid);
+        timerid = timer.setInterval(currTime,repeatHour);
+        Serial.print("hi");
+        previoustime = currTime;
+    }
+    
+    buttonState = digitalRead(resetswitch);
     if ( buttonState == HIGH){
-      total = measureDistance(pingPin, echoPin);
+      delay(2);
+      tone(buzzer, 1000);
+      total =  measureDistance(pingPin, echoPin);
+      Blynk.virtualWrite(lengthbin,total);
+      Serial.println(total);
+      noTone(buzzer);
+      //timer.restartTimer(timerid);
       
-
-      Serial.print("HIGH");
-    }
-
-    if (buttonState== LOW){
-      Serial.print("LOW");
-    }
+          
+    } 
  
 }
 
+
+BLYNK_WRITE(V9)
+{
+    
+    Serial.println("currTime");
+    currTime = (param.asInt());
+    currTime = currTime*defaulttime; 
+    Serial.println(currTime);
+
+}
 
 
 
