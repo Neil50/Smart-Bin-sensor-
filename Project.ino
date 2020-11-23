@@ -1,3 +1,4 @@
+
 #define BLYNK_PRINT Serial
 #define ESP8266_BAUD 9600
 #include <ESP8266_Lib.h>
@@ -26,14 +27,14 @@ WidgetLED orange(V2);
 WidgetLED red(V3);
 WidgetLED fireled(V4);
 
-char displaybat = V10;
+char displaybat = V5;
 char displaytrash = V11;
 char resettime = V9;
 
 char lengthbin = V12;
-long previoustime = 10000;
-long defaulttime = 10000;
-long currTime = 10000;
+long previoustime = 2000;
+long defaulttime = 2000;
+long currTime = 2000;
 
 // There must be one global SimpleTimer object.
 SimpleTimer timer;
@@ -64,7 +65,6 @@ long total = 100;
 int sensorValue;
 
 void repeatHour(){
-  //wifi_setup();
   float percentage = 0;
   digitalWrite(redled,LOW);
   digitalWrite(orangeled,LOW);
@@ -76,13 +76,11 @@ void repeatHour(){
   long x = measureDistance(pingPin, echoPin);
   percentage = (float)x/total*100;
   percentage = 100 - percentage;
- // Serial.println(x,DEC);
-  //Serial.println(percentage,DEC);
-  
+
+  // Map percentages
   if(percentage >= 80){
     digitalWrite(redled,HIGH);
     red.on();
-   
     delay(10000);
   }else if( 50 < percentage && percentage < 80){
     digitalWrite(orangeled,HIGH);
@@ -93,23 +91,23 @@ void repeatHour(){
     green.on();
     delay(10000);
   }
-  Serial.println("read");
+
   if(percentage < 0) percentage = 0;
   Blynk.virtualWrite(displaytrash,percentage);
   hour++;
-  if(hour == 1){
+
+  // If counter hits 24 it gets battery reading daily
+  if(hour == 24){
     hour = 0;
-    Serial.println("ON");
     digitalWrite(transwitch ,HIGH);
     delay(2000);
     long level = batteryMonitoring(BatteryPin);
     
-    Serial.println("OFF");
     digitalWrite(transwitch,LOW);
     delay(1000);
     Blynk.virtualWrite(displaybat,level);
   }
-  // battery monitoring and wifi
+
 }
 
 
@@ -121,7 +119,6 @@ void setup() {
     pinMode(resetswitch, INPUT);
     pinMode(transwitch, INPUT);
     pinMode(buzzer,OUTPUT); 
-    Serial.print("set");
     pinMode(LED_BUILTIN, OUTPUT);
     timerid = timer.setInterval(defaulttime, repeatHour);
     wifi_setup();
@@ -137,25 +134,10 @@ void wifi_setup(){
 }
 
 // looping
-void loop(){
-   
-    //Blynk.run();
-    //timer.run();
-    digitalWrite(LED_BUILTIN, HIGH);  
-    green.off();
-    red.off();
-    orange.off();
-    digitalWrite(transwitch ,HIGH); 
-    Serial.println(  batteryMonitoring(BatteryPin));
-    Blynk.virtualWrite(V5, batteryMonitoring(BatteryPin) );
+void loop(){   
+    Blynk.run();
+    timer.run();
     
-
-    //delay(5);
-   
-    //batteryMonitoring(BatteryPin));  
-   
-    measureDistance(pingPin, echoPin);  
-
     if (fireDetection(CarbonPin)){
       tone(buzzer,4000);
       fireled.on();
@@ -164,38 +146,30 @@ void loop(){
       noTone(buzzer);
       fireled.off();
     }
-  
     
+ 
+    // Calibration bin level code 
     if(currTime != previoustime){
         timer.deleteTimer(timerid);
         timerid = timer.setInterval(currTime,repeatHour);
-        Serial.print("hi");
         previoustime = currTime;
     }
     
     buttonState = digitalRead(resetswitch);
     if ( buttonState == HIGH){
-      delay(2);
+      delay(1);
       tone(buzzer, 1000);
       total =  measureDistance(pingPin, echoPin);
       Blynk.virtualWrite(lengthbin,total);
-      Serial.println(total);
       noTone(buzzer);
-      //timer.restartTimer(timerid);
-      
-          
     } 
- 
 }
 
 
 BLYNK_WRITE(V9)
 {
-    
-    Serial.println("currTime");
     currTime = (param.asInt());
     currTime = currTime*defaulttime; 
-    Serial.println(currTime);
 
 }
 

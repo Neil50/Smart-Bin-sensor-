@@ -22,7 +22,6 @@ long measureDistance(int pingPin, int echoPin){
      delay(100);
    }
 
-   //Serial.print(length/4);
   
-   return length/6;
+   return length/3;
 }
